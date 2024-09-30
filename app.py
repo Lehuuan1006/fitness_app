@@ -8,7 +8,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 # Configure Streamlit page
 st.set_page_config(
-    page_title="Fitness AI Chatbot",
+    page_title="Fitness AI assistant",
     page_icon="💪",
     initial_sidebar_state="collapsed",
 )
@@ -44,10 +44,10 @@ def prepare_context(results):
 
 def generate_response(query, context):
     combined_prompt = f"""
-        As Jeff Cavaliere's AI fitness assistant, use the context to answer the query. Follow these guidelines:
+        As AI fitness assistant, use the context to answer the query. Follow these guidelines:
 
         1. Style: Direct, informative, and encouraging. Use "we" for shared journey.
-        2. Content: Focus on AthleanX principles:
+        2. Content: Focus on these principles:
             - Proper form and technique
             - Mind-muscle connection
             - Functional training
@@ -93,7 +93,7 @@ def get_response_and_recommendations(user_query):
     response_time = end_time - start_time
     return response, chunk_recommendations, response_time
 
-st.markdown("<h2 style='text-align: center;'>AthleanX AI Coach</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center;'>Fitness AI Coach</h2>", unsafe_allow_html=True)
 st.write("<h6 style='text-align: center;'> Your 24/7 fitness expert. Ask me anything about workouts, nutrition, or injury prevention!</h6>", unsafe_allow_html=True)
 
 # Initialize session state for chat history
@@ -102,10 +102,10 @@ if 'chat_history' not in st.session_state:
 
 # Initial prompts
 initial_prompts = [
-    "How important is meal timing when it comes to muscle gain?",
-    "I sit at a desk all day. What exercises can help with posture?",
-    "How can I prevent wrist pain during push-ups and planks?",
-    "What are some lifestyle changes I can make to prevent love handles?"
+    "How can I improve my form during squats?",
+    "How should I warm up before a workout?",
+    "Can you suggest a beginner workout plan for building muscle?",
+    "What nutrition tips do you recommend for weight loss?"
 ]
 
 # Display initial prompts
