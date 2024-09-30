@@ -18,7 +18,7 @@ load_dotenv()
 
 # Initialize Pinecone
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-index_name = "fitness-chatbot-enhanced"
+index_name = "pdf-chunks"
 index = pc.Index(index_name)
 
 # Initialize the embedding model
