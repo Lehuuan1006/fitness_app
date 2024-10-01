@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from pinecone import Pinecone
 from sentence_transformers import SentenceTransformer
 from langchain_google_genai import ChatGoogleGenerativeAI
+from googleapiclient.discovery import build
 
 # Configure Streamlit page
 st.set_page_config(
@@ -30,6 +31,10 @@ embed_model = load_embedding_model()
 
 # Initialize the LLM
 llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro")
+
+# Initialize YouTube API
+youtube_api_key = os.getenv("YOUTUBE_API_KEY")
+youtube = build('youtube', 'v3', developerKey=youtube_api_key)
 
 def process_query(query, top_k=6):
     query_embedding = embed_model.encode(query).tolist()
@@ -66,20 +71,26 @@ def generate_response(query, context):
     response = llm.invoke(combined_prompt)
     return response.content
 
-def recommend_chunks(results, num_recommendations=3):
+def recommend_videos(query, num_recommendations=3):
+    # Call the YouTube Data API to search for videos related to the query
+    search_response = youtube.search().list(
+        q=query,
+        part='snippet',
+        maxResults=num_recommendations,
+        type='video'
+    ).execute()
+
     recommendations = []
-    
-    for match in results['matches']:
-        content = match['metadata'].get('content')
-        title = match['metadata'].get('title')
-        if content and title:
-            recommendations.append({
-                'title': title,
-                'content': content
-            })
-        
-        if len(recommendations) == num_recommendations:
-            break
+    for search_result in search_response.get('items', []):
+        video_id = search_result['id']['videoId']
+        title = search_result['snippet']['title']
+        thumbnail_url = search_result['snippet']['thumbnails']['high']['url']
+
+        recommendations.append({
+            'title': title,
+            'video_id': video_id,
+            'thumbnail_url': thumbnail_url
+        })
     
     return recommendations
 
@@ -88,10 +99,10 @@ def get_response_and_recommendations(user_query):
     search_results = process_query(user_query)
     context = prepare_context(search_results)
     response = generate_response(user_query, context)
-    chunk_recommendations = recommend_chunks(search_results)
+    video_recommendations = recommend_videos(user_query)
     end_time = time.time()
     response_time = end_time - start_time
-    return response, chunk_recommendations, response_time
+    return response, video_recommendations, response_time
 
 st.markdown("<h2 style='text-align: center;'>Fitness AI Coach</h2>", unsafe_allow_html=True)
 st.write("<h6 style='text-align: center;'> Your 24/7 fitness expert. Ask me anything about workouts, nutrition, or injury prevention!</h6>", unsafe_allow_html=True)
@@ -114,11 +125,11 @@ cols = st.columns(2)
 for i, prompt in enumerate(initial_prompts):
     if cols[i % 2].button(prompt, key=f"prompt_{i}"):
         st.session_state.chat_history.append({"role": "user", "content": prompt})
-        response, chunk_recommendations, response_time = get_response_and_recommendations(prompt)
+        response, video_recommendations, response_time = get_response_and_recommendations(prompt)
         st.session_state.chat_history.append({
             "role": "assistant", 
             "content": response,
-            "recommendations": chunk_recommendations,
+            "recommendations": video_recommendations,
             "response_time": response_time
         })
         st.rerun()
@@ -129,11 +140,14 @@ for message in st.session_state.chat_history:
         st.write(message["content"])
     if message["role"] == "assistant" and "recommendations" in message:
         st.markdown(f"<p style='color: grey; font-size: 0.8em;'>Response time: {message['response_time']:.2f} seconds</p>", unsafe_allow_html=True)
-        st.subheader("Recommended Chunks:")
-        for rec in message["recommendations"]:
-            st.write(f"**{rec['title']}**")
-            st.write(f"{rec['content'][:100]}...")  # Display first 100 characters of the content
-            st.write("---")
+        st.subheader("Recommended Videos:")
+        cols = st.columns(3)
+        for idx, rec in enumerate(message["recommendations"]):
+            with cols[idx]:
+                st.image(rec['thumbnail_url'], use_column_width=True)
+                st.write(f"**{rec['title']}**")
+                video_url = f"https://www.youtube.com/watch?v={rec['video_id']}"
+                st.markdown(f"[Watch Video]({video_url})")
 
 user_input = st.chat_input("Type your fitness question here...")
 
@@ -143,13 +157,13 @@ if user_input:
 
     with st.chat_message("assistant", avatar="💬"):
         with st.spinner("Crushing this query for you..."):
-            response, chunk_recommendations, response_time = get_response_and_recommendations(user_input)
+            response, video_recommendations, response_time = get_response_and_recommendations(user_input)
 
     st.session_state.chat_history.append({"role": "user", "content": user_input})
     st.session_state.chat_history.append({
         "role": "assistant", 
         "content": response,
-        "recommendations": chunk_recommendations,
+        "recommendations": video_recommendations,
         "response_time": response_time
     })
 
